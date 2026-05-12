@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PifflersCrestronLibrary", "PifflersCrestronLibrary\PifflersCrestronLibrary.csproj", "{04CEC925-8042-4334-B0BB-A04EA011EAFF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{04CEC925-8042-4334-B0BB-A04EA011EAFF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{04CEC925-8042-4334-B0BB-A04EA011EAFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{04CEC925-8042-4334-B0BB-A04EA011EAFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{04CEC925-8042-4334-B0BB-A04EA011EAFF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
