@@ -46,6 +46,7 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="Logger\Debug.cs" />
+        <Compile Include="Logger\Logger.cs" />
         <Compile Include="Properties\AssemblyInfo.cs"/>
     </ItemGroup>
     <ItemGroup>
