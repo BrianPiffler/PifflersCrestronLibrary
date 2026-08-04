@@ -1,4 +1,3 @@
-using System;
 using Crestron.SimplSharp;
 
 namespace PifflersCrestronLibrary.Logger
@@ -7,6 +6,9 @@ namespace PifflersCrestronLibrary.Logger
     {
         public const string DebugCommandName = "deebug"; // cause debug is already used =(
         public const string DebugCommandDescription = "Logger control: deebug on|off|status|help";
+
+        /// <summary>App-/Projekt-Tag fuer die persistente ErrorLog-Ausgabe. Beim Start setzen.</summary>
+        public static string AppName { get; set; } = "Pifflers";
 
         public static bool DebugMode { get; set; } = true;
 
@@ -33,16 +35,15 @@ namespace PifflersCrestronLibrary.Logger
             CrestronConsole.PrintLine("[WARN] {0}", msg ?? string.Empty);
         }
 
+        // Fehler werden immer ausgegeben, unabhaengig von DebugMode.
         public static void Error(string msg)
         {
-            if (!DebugMode) return;
             CrestronConsole.PrintLine("[ERROR] {0}", msg ?? string.Empty);
         }
 
         public static void LogToErrorLog(string msg)
         {
-            var safeMessage = msg ?? string.Empty;
-            ErrorLog.Exception("[CRITICAL] " + safeMessage, new Exception(safeMessage));
+            ErrorLog.Error("[{0}] {1}", AppName, msg ?? string.Empty);
         }
 
         public static void DebugConsoleCommand(string args)

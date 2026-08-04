@@ -56,7 +56,6 @@
         <Compile Include="Devices\Shure\P300.cs" />
         <Compile Include="Helper\PasscodeManager.cs" />
         <Compile Include="Logger\Debug.cs" />
-        <Compile Include="Logger\Logger.cs" />
         <Compile Include="Properties\AssemblyInfo.cs"/>
     </ItemGroup>
     <ItemGroup>
