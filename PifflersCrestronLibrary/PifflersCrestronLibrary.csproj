@@ -54,6 +54,7 @@
         <Compile Include="Devices\Lightware\Lightware_UCX.cs" />
         <Compile Include="Devices\Shure\ANI4IN.cs" />
         <Compile Include="Devices\Shure\P300.cs" />
+        <Compile Include="Helper\ConfigurationLoader.cs" />
         <Compile Include="Helper\PasscodeManager.cs" />
         <Compile Include="Logger\Debug.cs" />
         <Compile Include="Properties\AssemblyInfo.cs"/>
