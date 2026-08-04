@@ -13,7 +13,7 @@
         <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
         <FileAlignment>512</FileAlignment>
         <PackageId>Pifflers.Crestron.Library</PackageId>
-        <Version>1.0.0</Version>
+        <Version>1.0.1</Version>
         <Authors>Björn Piffko</Authors>
         <Company>Pifflers</Company>
         <Description>Reusable helper and device control classes for Crestron C# projects.</Description>
@@ -45,6 +45,16 @@
         <Reference Include="System.Xml"/>
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="Communication\BasicTCP.cs" />
+        <Compile Include="Communication\SSHClient.cs" />
+        <Compile Include="Devices\Avocor\Avocor_AVE.cs" />
+        <Compile Include="Devices\Colt\X100Pro.cs" />
+        <Compile Include="Devices\Unilumin\UTV.cs" />
+        <Compile Include="Devices\Custom\PJLink.cs" />
+        <Compile Include="Devices\Lightware\Lightware_UCX.cs" />
+        <Compile Include="Devices\Shure\ANI4IN.cs" />
+        <Compile Include="Devices\Shure\P300.cs" />
+        <Compile Include="Helper\PasscodeManager.cs" />
         <Compile Include="Logger\Debug.cs" />
         <Compile Include="Logger\Logger.cs" />
         <Compile Include="Properties\AssemblyInfo.cs"/>
@@ -53,11 +63,6 @@
         <PackageReference Include="Crestron.SimplSharp.SDK.Library" Version="2.21.237" />
         <PackageReference Include="Crestron.SimplSharp.SDK.ProgramLibrary" Version="2.21.237" />
         <PackageReference Include="NuGet.Build.Tasks.Pack" Version="6.10.0" PrivateAssets="All" />
-    </ItemGroup>
-    <ItemGroup>
-      <Folder Include="Communication\" />
-      <Folder Include="Devices\" />
-      <Folder Include="Helper\" />
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets"/>
     <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

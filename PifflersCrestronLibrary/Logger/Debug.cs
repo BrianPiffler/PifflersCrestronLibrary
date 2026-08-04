@@ -1,34 +1,92 @@
+using System;
 using Crestron.SimplSharp;
 
-namespace PifflersCrestronLibrary
+namespace PifflersCrestronLibrary.Logger
 {
-    public class Debug
+    public static class Debug
     {
-        private const string VERSION = "0.0.1.3";
-        private bool _debug = true;
-        private string _friendlyName = "";
+        public const string DebugCommandName = "deebug"; // cause debug is already used =(
+        public const string DebugCommandDescription = "Logger control: deebug on|off|status|help";
 
-        public Debug(string friendlyName)
+        public static bool DebugMode { get; set; } = true;
+
+        public static void RegisterConsoleCommand(ConsoleAccessLevelEnum accessLevel = ConsoleAccessLevelEnum.AccessOperator)
         {
-            _friendlyName = friendlyName;
-            print("Debug initialized: old Vistalib Version");
-            print("Try tu use the Deebug instead");
+            CrestronConsole.AddNewConsoleCommand(
+                DebugConsoleCommand,
+                DebugCommandName,
+                DebugCommandDescription,
+                accessLevel);
+
+            CrestronConsole.PrintLine("[DEBUG] Registered command: {0} on|off|status|help", DebugCommandName);
         }
 
-        public bool status
+        public static void Log(string msg)
         {
-            get => _debug;
-            set => _debug = value;
+            if (!DebugMode) return;
+            CrestronConsole.PrintLine("[LOG] {0}", msg ?? string.Empty);
         }
 
-        public void print(string message, params object[] args)
+        public static void Warn(string msg)
         {
-            if (_debug)
+            if (!DebugMode) return;
+            CrestronConsole.PrintLine("[WARN] {0}", msg ?? string.Empty);
+        }
+
+        public static void Error(string msg)
+        {
+            if (!DebugMode) return;
+            CrestronConsole.PrintLine("[ERROR] {0}", msg ?? string.Empty);
+        }
+
+        public static void LogToErrorLog(string msg)
+        {
+            var safeMessage = msg ?? string.Empty;
+            ErrorLog.Exception("[CRITICAL] " + safeMessage, new Exception(safeMessage));
+        }
+
+        public static void DebugConsoleCommand(string args)
+        {
+            var command = (args ?? string.Empty).Trim().ToLowerInvariant();
+
+            switch (command)
             {
-                string nachricht = string.Format(message, args);
-                string formatedMessage = $"[ {_friendlyName} ] - {nachricht} ";
-                CrestronConsole.PrintLine(formatedMessage);
+                case "on":
+                    DebugMode = true;
+                    CrestronConsole.PrintLine("[DEBUG] Debug mode is now ON.");
+                    break;
+
+                case "off":
+                    DebugMode = false;
+                    CrestronConsole.PrintLine("[DEBUG] Debug mode is now OFF.");
+                    break;
+
+                case "status":
+                    CrestronConsole.PrintLine("[DEBUG] Debug mode status: {0}", DebugMode ? "ON" : "OFF");
+                    break;
+
+                case "help":
+                case "?":
+                case "":
+                    PrintDebugCommandHelp();
+                    break;
+
+                default:
+                    CrestronConsole.PrintLine("[DEBUG] Unknown option: '{0}'", command);
+                    PrintDebugCommandHelp();
+                    break;
             }
+        }
+
+        private static void PrintDebugCommandHelp()
+        {
+            CrestronConsole.PrintLine("Usage: {0} <option>", DebugCommandName);
+            CrestronConsole.PrintLine("Options:");
+            CrestronConsole.PrintLine("  on     - Enable debug output in SSH console");
+            CrestronConsole.PrintLine("  off    - Disable debug output in SSH console");
+            CrestronConsole.PrintLine("  status - Show current debug status");
+            CrestronConsole.PrintLine("  help   - Show this help");
+            CrestronConsole.PrintLine("Examples: {0} on | {0} status | {0} off", DebugCommandName);
         }
     }
 }
