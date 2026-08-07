@@ -50,6 +50,7 @@
         <Compile Include="Communication\BasicTCPServer.cs" />
         <Compile Include="Communication\SSHClient.cs" />
         <Compile Include="Devices\ArtNet\ArtNetSender.cs" />
+        <Compile Include="Devices\Aten\VP2730.cs" />
         <Compile Include="Devices\Avocor\Avocor_AVE.cs" />
         <Compile Include="Devices\Colt\X100Pro.cs" />
         <Compile Include="Devices\Companion\CompanionBridge.cs" />
