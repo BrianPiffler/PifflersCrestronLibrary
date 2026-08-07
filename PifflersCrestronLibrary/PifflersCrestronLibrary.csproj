@@ -46,7 +46,9 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="Communication\BasicTCP.cs" />
+        <Compile Include="Communication\BasicUDP.cs" />
         <Compile Include="Communication\SSHClient.cs" />
+        <Compile Include="Devices\ArtNet\ArtNetSender.cs" />
         <Compile Include="Devices\Avocor\Avocor_AVE.cs" />
         <Compile Include="Devices\Colt\X100Pro.cs" />
         <Compile Include="Devices\Unilumin\UTV.cs" />
