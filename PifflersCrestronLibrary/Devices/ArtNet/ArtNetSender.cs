@@ -34,8 +34,12 @@ namespace PifflersCrestronLibrary.Devices.ArtNet
         /// <param name="friendlyName">Anzeigename fuer Logging.</param>
         /// <param name="universe">Kombiniertes 15-Bit-Universum (Net|SubNet|Uni). Meist 0.</param>
         public ArtNetSender(string host, string friendlyName, int universe = 0)
-            : base(host, friendlyName, DefaultPort)
+            : base(host, friendlyName, DefaultPort, DefaultPort)
         {
+            // localPort=DefaultPort (6454) — Crestron UDPServer.EnableUDPServer verweigert
+            // localPort=0 mit SOCKET_INVALID_PORT_NUMBER. Art-Net-Standardport ist 6454
+            // (bidirektional), Bind ist unkritisch weil auf dem CP4 keine andere
+            // ArtNet-Instanz laeuft.
             var u = (ushort)(universe & 0x7FFF);
             this.subUni = (byte)(u & 0xFF);
             this.net = (byte)((u >> 8) & 0x7F);

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using Crestron.SimplSharp;
 using Crestron.SimplSharp.CrestronSockets;
@@ -22,6 +23,13 @@ namespace PifflersCrestronLibrary.Communication
 
         protected TCPServer server;
         protected bool running;
+
+        // Eigenes Client-Tracking (Index -> Adresse). Wir koennen den Crestron-SDK
+        // NICHT nach freien Slots fragen — ClientConnected(idx) mit einem nicht-
+        // verbundenen Index schreibt ErrorLog "Invalid client Index" — der Log-Spam
+        // war unsere eigene Erzeugung, sobald wir ueber alle Slots iterierten.
+        private readonly object connectedLock = new object();
+        private readonly Dictionary<uint, string> connected = new Dictionary<uint, string>();
 
         public delegate void ClientConnectDelegate(uint clientIndex, string address);
         public event ClientConnectDelegate ClientConnected;
@@ -50,7 +58,10 @@ namespace PifflersCrestronLibrary.Communication
             if (running) return;
             try
             {
-                server = new TCPServer(port, maxClients);
+                // Multi-Client-Konstruktor: (bindAddress, port, bufferSize, adapter, maxClients).
+                // Die vermeintliche 2-arg Signatur (port, maxClients) existiert zwar, ist aber
+                // in Wirklichkeit (port, bufferSize) — das war der Boot-Bug im Feld.
+                server = new TCPServer("0.0.0.0", port, 8192, EthernetAdapterType.EthernetUnknownAdapter, maxClients);
                 server.SocketStatusChange += OnServerSocketStatus;
                 var status = server.WaitForConnectionAsync(OnConnect);
                 running = status == SocketErrorCodes.SOCKET_OPERATION_PENDING || status == SocketErrorCodes.SOCKET_OK;
@@ -74,6 +85,7 @@ namespace PifflersCrestronLibrary.Communication
                     server.DisconnectAll();
                     server.Stop();
                 }
+                lock (connectedLock) connected.Clear();
                 Debug.Log("[TCPServer] [" + friendlyName + "] stopped.");
             }
             catch (Exception e)
@@ -86,9 +98,14 @@ namespace PifflersCrestronLibrary.Communication
         {
             if (status != SocketStatus.SOCKET_STATUS_CONNECTED)
             {
-                var handler = ClientDisconnected;
-                if (handler != null) handler(clientIndex);
-                Debug.Log("[TCPServer] [" + friendlyName + "] client " + clientIndex + " -> " + status);
+                bool wasKnown;
+                lock (connectedLock) wasKnown = connected.Remove(clientIndex);
+                if (wasKnown)
+                {
+                    var handler = ClientDisconnected;
+                    if (handler != null) handler(clientIndex);
+                    Debug.Log("[TCPServer] [" + friendlyName + "] client " + clientIndex + " -> " + status);
+                }
             }
         }
 
@@ -96,21 +113,53 @@ namespace PifflersCrestronLibrary.Communication
         {
             if (!running) return;
 
-            if (clientIndex == 0)
+            // Ungueltiger Slot? Nur re-listen, keinen weiteren SDK-Call, damit wir
+            // nicht selbst "Invalid client Index"-Logs triggern.
+            if (clientIndex == 0 || clientIndex > maxClients)
             {
-                Debug.Error("[TCPServer] [" + friendlyName + "] OnConnect invalid clientIndex 0");
-            }
-            else
-            {
-                var addr = myServer.GetAddressServerAcceptedConnectionFromForSpecificClient(clientIndex);
-                Debug.Log("[TCPServer] [" + friendlyName + "] client " + clientIndex + " connected (" + addr + ")");
-                var handler = ClientConnected;
-                if (handler != null) handler(clientIndex, addr);
-
-                myServer.ReceiveDataAsync(clientIndex, OnDataReceived);
+                if (running) myServer.WaitForConnectionAsync(OnConnect);
+                return;
             }
 
-            // Auf naechsten Client warten (bis maxClients erreicht ist)
+            string addr = null;
+            try { addr = myServer.GetAddressServerAcceptedConnectionFromForSpecificClient(clientIndex); }
+            catch { addr = null; }
+            if (string.IsNullOrEmpty(addr))
+            {
+                if (running) myServer.WaitForConnectionAsync(OnConnect);
+                return;
+            }
+
+            List<uint> staleSameIp;
+            lock (connectedLock)
+            {
+                connected[clientIndex] = addr;
+                staleSameIp = new List<uint>();
+                foreach (var kv in connected)
+                    if (kv.Key != clientIndex && string.Equals(kv.Value, addr, StringComparison.OrdinalIgnoreCase))
+                        staleSameIp.Add(kv.Key);
+            }
+
+            Debug.Log("[TCPServer] [" + friendlyName + "] client " + clientIndex + " connected (" + addr + ")");
+
+            // Alte Verbindungen von derselben IP kicken (Companion-Pi haelt keine
+            // Doppelverbindungen). Iteriert nur ueber selbst getrackte Slots, um
+            // keine "Invalid client Index"-Logs vom SDK zu erzeugen.
+            foreach (var stale in staleSameIp)
+            {
+                try
+                {
+                    Debug.Log("[TCPServer] [" + friendlyName + "] kick stale client " + stale + " (" + addr + ") — replaced by " + clientIndex);
+                    myServer.Disconnect(stale);
+                }
+                catch (Exception e) { Debug.Warn("[TCPServer] [" + friendlyName + "] KickStale " + stale + " Exception: " + e.Message); }
+            }
+
+            var handler = ClientConnected;
+            if (handler != null) handler(clientIndex, addr);
+
+            myServer.ReceiveDataAsync(clientIndex, OnDataReceived);
+
             if (running) myServer.WaitForConnectionAsync(OnConnect);
         }
 
@@ -166,10 +215,13 @@ namespace PifflersCrestronLibrary.Communication
         {
             if (!running || server == null || data == null || data.Length == 0) return 0;
             int ok = 0;
-            for (uint i = 1; i <= server.MaxNumberOfClientSupported; i++)
+            uint[] snapshot;
+            lock (connectedLock)
             {
-                if (server.ClientConnected(i) && SendToClient(i, data)) ok++;
+                snapshot = new uint[connected.Count];
+                connected.Keys.CopyTo(snapshot, 0);
             }
+            foreach (var i in snapshot) if (SendToClient(i, data)) ok++;
             return ok;
         }
 

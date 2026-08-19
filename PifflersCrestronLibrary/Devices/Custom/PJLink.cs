@@ -25,6 +25,7 @@ namespace PifflersCrestronLibrary.Devices.Custom
         private CTimer pollPowerTimer;
         private CTimer pollSourceTimer;
         private CTimer pollLampTimer;
+        private CTimer pollAvMuteTimer;
 
         private bool greetingReceived;
         private bool authenticationRequired;
@@ -35,8 +36,12 @@ namespace PifflersCrestronLibrary.Devices.Custom
         public uint LampHours { get; private set; }
         public string PowerState { get; private set; }
         public string LastError { get; private set; }
+        /// <summary>true wenn der Beamer AV-Mute (Bild+Ton weg) aktiv hat.</summary>
+        public bool AvMute { get; private set; }
 
         public event EventHandler PJLinkEvent;
+        /// <summary>Feuert nach jeder AVMT-Antwort mit dem aktuellen (neuen oder gleichen) State.</summary>
+        public event Action<bool> AvMuteChanged;
 
         public PJLink(string host, string pass, string friendlyName)
             : base(host, friendlyName, 4352)
@@ -102,6 +107,20 @@ namespace PifflersCrestronLibrary.Devices.Custom
             SendCommand("%1LAMP ?\r");
         }
 
+        /// <summary>Setzt A/V-Mute (Bild + Ton). PJLink Class1: %1AVMT 31 (on) / 30 (off).</summary>
+        public void SetAvMute(bool on)
+        {
+            SendCommand(on ? "%1AVMT 31\r" : "%1AVMT 30\r");
+            // Direkt danach Zustand abfragen, damit das Feedback nicht bis zum
+            // naechsten Poll-Zyklus warten muss.
+            SendCommand("%1AVMT ?\r");
+        }
+
+        public void GetAvMute()
+        {
+            SendCommand("%1AVMT ?\r");
+        }
+
         private void SocketStatusChangedInternal(TCPClient _, SocketStatus status)
         {
             Debug.Log(friendlyName + " PJLink socket status (internal): " + status);
@@ -123,19 +142,24 @@ namespace PifflersCrestronLibrary.Devices.Custom
         private void StartPollTimers()
         {
             if (pollPowerTimer == null)
-                pollPowerTimer = new CTimer(_ => PollPower(), null, 1000, 1000);
+                pollPowerTimer = new CTimer(_ => PollPower(), null, 10000, 10000);
             else
-                pollPowerTimer.Reset(1000, 1000);
+                pollPowerTimer.Reset(10000, 10000);
 
             if (pollSourceTimer == null)
-                pollSourceTimer = new CTimer(_ => PollSource(), null, 5000, 5000);
+                pollSourceTimer = new CTimer(_ => PollSource(), null, 30000, 30000);
             else
-                pollSourceTimer.Reset(5000, 5000);
+                pollSourceTimer.Reset(30000, 30000);
 
             if (pollLampTimer == null)
                 pollLampTimer = new CTimer(_ => PollLamp(), null, 300000, 300000);
             else
                 pollLampTimer.Reset(300000, 300000);
+
+            if (pollAvMuteTimer == null)
+                pollAvMuteTimer = new CTimer(_ => PollAvMute(), null, 10000, 10000);
+            else
+                pollAvMuteTimer.Reset(10000, 10000);
         }
 
         private void StopPollTimers()
@@ -143,6 +167,7 @@ namespace PifflersCrestronLibrary.Devices.Custom
             pollPowerTimer?.Stop();
             pollSourceTimer?.Stop();
             pollLampTimer?.Stop();
+            pollAvMuteTimer?.Stop();
         }
 
         private void PollPower()
@@ -161,6 +186,12 @@ namespace PifflersCrestronLibrary.Devices.Custom
         {
             if (Polling && Connected)
                 GetLampHours();
+        }
+
+        private void PollAvMute()
+        {
+            if (Polling && Connected)
+                GetAvMute();
         }
 
         private void SendCommand(string command)
@@ -253,6 +284,30 @@ namespace PifflersCrestronLibrary.Devices.Custom
                 return;
             }
 
+            // AVMT-Antwort: 2-stellig, letzte Ziffer 1=on / 0=off (erste Ziffer 1=Video, 2=Audio, 3=AV).
+            var avmt = Regex.Match(normalizedLine, @"^%1AVMT=([123][01])$");
+            if (avmt.Success)
+            {
+                AvMute = avmt.Groups[1].Value.EndsWith("1");
+                RaiseDataEvent("AvMute");
+                var h = AvMuteChanged; if (h != null) h(AvMute);
+                return;
+            }
+
+            // AVMT/INPT liefern ERR3 solange der Beamer aus ist — erwartet, kein Fehler.
+            // Wir schlucken das (keine ErrorLog-Zeile), reflektieren aber AvMute=false
+            // im Modell damit ein evtl. anhaengender UI-State sauber bleibt.
+            if (Regex.IsMatch(normalizedLine, @"^%1(AVMT|INPT|LAMP)=ERR[234]$"))
+            {
+                if (normalizedLine.StartsWith("%1AVMT=") && AvMute)
+                {
+                    AvMute = false;
+                    RaiseDataEvent("AvMute");
+                    var h = AvMuteChanged; if (h != null) h(false);
+                }
+                return;
+            }
+
             if (normalizedLine.Contains("ERR"))
             {
                 LastError = normalizedLine;
@@ -305,6 +360,7 @@ namespace PifflersCrestronLibrary.Devices.Custom
             pollPowerTimer?.Dispose();
             pollSourceTimer?.Dispose();
             pollLampTimer?.Dispose();
+            pollAvMuteTimer?.Dispose();
             md5?.Dispose();
             base.Dispose();
         }

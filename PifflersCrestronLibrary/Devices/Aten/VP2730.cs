@@ -10,16 +10,23 @@ using PifflersCrestronLibrary.Logger;
 namespace PifflersCrestronLibrary.Devices.Aten
 {
     /// <summary>
-    /// Aten VP2730 (Video-Matrix, HTTPS-REST + SocketIO).
-    /// Aktuell abgedeckt aus dem Contract der Pausenhalle: Routing (Input->Output),
-    /// Video-Freeze und Video-Mute (Blank) pro Output. State-Feedback per Polling
-    /// (SocketIO-Anbindung kommt in v2, wenn wir Push-Events brauchen).
+    /// Aten VP2730 (Video-Matrix) — HTTPS-REST-Weg.
     ///
-    /// Auth-Flow: POST /api/v2.0/auth/tokens mit Body {"authorization":"base64(user:pass)"}
-    /// -> credential im Response; alle folgenden Requests tragen Header
-    /// <c>Authorization: &lt;credential&gt;</c>. Bei 401 wird einmal automatisch reauthentifiziert.
+    /// STATUS: **NICHT AM FELD VERIFIZIERT**. Vor Ort (2026-08-17) liefert die
+    /// REST-API des KSD-Geraetes persistente HTTP 500 auf `/api/auth/login` und
+    /// `/api/network` (auch nach Stromreset; Verdacht leere RTC-Batterie).
+    /// Zusaetzlich ist die tatsaechliche API-Basis am Geraet `/api/` (nicht
+    /// `/api/v2.0/` wie im 2021er-PDF), und der Contract deckt "Blank" per REST
+    /// via `outputs[].blank.value` ab — diese Felder wurden nie mit einer
+    /// gesunden Firmware gegengeprueft. Der RS-232-Treiber
+    /// <see cref="VP2730Serial"/> ist der aktuell im Feld benutzte Weg.
     ///
-    /// Referenz: APIs/vp2730_restful_api_2021-01-14.pdf (im Projekt-Repo).
+    /// Der Code bleibt liegen, damit bei intaktem REST-Backend (neue FW,
+    /// neuer RTC-Akku) ein Fallback existiert — er ist ohne Feldtest jedoch
+    /// als Prototyp zu betrachten.
+    ///
+    /// Referenz: APIs/vp2730_restful_api_2021-01-14.pdf (2021er-Stand,
+    /// stellenweise vom Geraet abweichend).
     /// </summary>
     public class VP2730 : IDisposable
     {
