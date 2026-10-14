@@ -257,7 +257,7 @@ namespace PifflersCrestronLibrary.Communication
             }
         }
 
-        protected void ProcessFeedback(string message)
+        protected virtual void ProcessFeedback(string message)
         {
             foreach (var kv in matchStringDict)
             {

@@ -38,10 +38,14 @@ namespace PifflersCrestronLibrary.Devices.Custom
         public string LastError { get; private set; }
         /// <summary>true wenn der Beamer AV-Mute (Bild+Ton weg) aktiv hat.</summary>
         public bool AvMute { get; private set; }
+        /// <summary>true wenn der Beamer Freeze aktiv hat (PJLink Class 2).</summary>
+        public bool Freeze { get; private set; }
 
         public event EventHandler PJLinkEvent;
         /// <summary>Feuert nach jeder AVMT-Antwort mit dem aktuellen (neuen oder gleichen) State.</summary>
         public event Action<bool> AvMuteChanged;
+        /// <summary>Feuert nach jeder FREZ-Abfrage-Antwort mit dem aktuellen State.</summary>
+        public event Action<bool> FreezeChanged;
 
         public PJLink(string host, string pass, string friendlyName)
             : base(host, friendlyName, 4352)
@@ -119,6 +123,18 @@ namespace PifflersCrestronLibrary.Devices.Custom
         public void GetAvMute()
         {
             SendCommand("%1AVMT ?\r");
+        }
+
+        /// <summary>Setzt Freeze (Standbild). Erst ab PJLink Class 2: %2FREZ 1/0.</summary>
+        public void SetFreeze(bool on)
+        {
+            SendCommand(on ? "%2FREZ 1\r" : "%2FREZ 0\r");
+            SendCommand("%2FREZ ?\r");
+        }
+
+        public void GetFreeze()
+        {
+            SendCommand("%2FREZ ?\r");
         }
 
         private void SocketStatusChangedInternal(TCPClient _, SocketStatus status)
@@ -291,6 +307,33 @@ namespace PifflersCrestronLibrary.Devices.Custom
                 AvMute = avmt.Groups[1].Value.EndsWith("1");
                 RaiseDataEvent("AvMute");
                 var h = AvMuteChanged; if (h != null) h(AvMute);
+                return;
+            }
+
+            var frez = Regex.Match(normalizedLine, @"^%2FREZ=([01])$");
+            if (frez.Success)
+            {
+                Freeze = frez.Groups[1].Value == "1";
+                RaiseDataEvent("Freeze");
+                var h = FreezeChanged; if (h != null) h(Freeze);
+                return;
+            }
+
+            if (normalizedLine == "%2FREZ=OK")
+                return;
+
+            // FREZ=ERR1: Beamer kann nur Class 1 -> kein Freeze moeglich. Kein ErrorLog-Spam, nur Warn.
+            // ERR3: Beamer aus -> Freeze ist implizit weg.
+            if (normalizedLine.StartsWith("%2FREZ=ERR"))
+            {
+                if (normalizedLine == "%2FREZ=ERR1")
+                    Debug.Warn(friendlyName + " PJLink: Freeze nicht unterstuetzt (nur Class 1?)");
+                if (Freeze)
+                {
+                    Freeze = false;
+                    RaiseDataEvent("Freeze");
+                    var h = FreezeChanged; if (h != null) h(false);
+                }
                 return;
             }
 
