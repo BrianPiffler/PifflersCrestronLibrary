@@ -58,6 +58,7 @@
         <Compile Include="Devices\Companion\CompanionBridge.cs" />
         <Compile Include="Devices\Unilumin\UTV.cs" />
         <Compile Include="Devices\Custom\PJLink.cs" />
+        <Compile Include="Devices\Knx\KnxNetIpTunnel.cs" />
         <Compile Include="Devices\Lightware\Lightware_UCX.cs" />
         <Compile Include="Devices\Shure\ANI4IN.cs" />
         <Compile Include="Devices\Shure\P300.cs" />
